@@ -1,0 +1,5 @@
+PGHOST=your-db-host.com
+PGPORT=5432
+PGDATABASE=your_database_name
+PGUSER=your_username
+PGPASSWORD=your_password
