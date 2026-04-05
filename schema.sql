@@ -28,9 +28,9 @@ CREATE TABLE IF NOT EXISTS streets (
 CREATE TABLE IF NOT EXISTS addresses (
     id SERIAL PRIMARY KEY,
     street_id INTEGER REFERENCES streets(id),
-    house_number VARCHAR(20),
+    house_number VARCHAR(255),
     city_id INTEGER REFERENCES cities(id),
-    postcode VARCHAR(5),
+    postcode VARCHAR(50),
     province_code VARCHAR(2) REFERENCES provinces(code),
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
