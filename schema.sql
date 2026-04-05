@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS streets (
     id SERIAL PRIMARY KEY,
     name VARCHAR(300) NOT NULL,
     city_id INTEGER REFERENCES cities(id),
+    province_code VARCHAR(2),
     UNIQUE(name, city_id)
 );
 
@@ -46,6 +47,8 @@ CREATE INDEX IF NOT EXISTS idx_addresses_city ON addresses(city_id);
 CREATE INDEX IF NOT EXISTS idx_addresses_province ON addresses(province_code);
 CREATE INDEX IF NOT EXISTS idx_addresses_coords ON addresses(latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_streets_name ON streets(name);
+CREATE INDEX IF NOT EXISTS idx_streets_province ON streets(province_code);
+CREATE INDEX IF NOT EXISTS idx_streets_province ON streets(province_code);
 CREATE INDEX IF NOT EXISTS idx_cities_name ON cities(name);
 
 -- View for easy address queries
@@ -63,4 +66,4 @@ SELECT
 FROM addresses a
 JOIN streets s ON a.street_id = s.id
 JOIN cities c ON a.city_id = c.id
-JOIN provinces p ON a.province_code = p.code;
+LEFT JOIN provinces p ON a.province_code = p.code;

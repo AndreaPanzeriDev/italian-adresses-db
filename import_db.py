@@ -8,28 +8,38 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def sanitize_postcode(postcode):
-    if not postcode:
-        return None
-    postcode = postcode.strip()
-    match = re.match(r'^(\d{5})', postcode)
-    if match:
-        return match.group(1)
-    return None
-
-def sanitize_postcode(postcode):
-    if not postcode:
-        return None
-    postcode = postcode.strip()
-    match = re.match(r'^(\d{5})', postcode)
-    if match:
-        return match.group(1)
-    return None
-
+CAP_PROVINCE_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cap_province.csv')
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 ADDRESSES_CSV = os.path.join(DATA_DIR, 'addresses.csv')
 SCHEMA_SQL = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'schema.sql')
 PROVINCES_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'provinces.csv')
+
+def load_cap_province_mapping():
+    mapping = {}
+    with open(CAP_PROVINCE_CSV, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            mapping[row['cap_prefix']] = row['province_code']
+    return mapping
+
+def get_province_from_postcode(postcode, cap_mapping):
+    if not postcode:
+        return None
+    postcode = postcode.strip()
+    match = re.match(r'^(\d{5})', postcode)
+    if match:
+        prefix = match.group(1)[:2]
+        return cap_mapping.get(prefix)
+    return None
+
+def sanitize_postcode(postcode):
+    if not postcode:
+        return None
+    postcode = postcode.strip()
+    match = re.match(r'^(\d{5})', postcode)
+    if match:
+        return match.group(1)
+    return None
 
 def get_db_connection():
     try:
@@ -77,6 +87,8 @@ def load_addresses(conn):
         print(f'CSV file not found: {ADDRESSES_CSV}', file=sys.stderr)
         sys.exit(1)
     
+    cap_mapping = load_cap_province_mapping()
+    
     with conn.cursor() as cur:
         cur.execute('SELECT code FROM provinces')
         province_map = {row[0] for row in cur.fetchall()}
@@ -84,8 +96,8 @@ def load_addresses(conn):
         cur.execute('SELECT id, name, province_code FROM cities')
         city_cache = {(name, prov): cid for cid, name, prov in cur.fetchall()}
         
-        cur.execute('SELECT id, name, city_id FROM streets')
-        street_cache = {(name, city_id): sid for sid, name, city_id in cur.fetchall()}
+        cur.execute('SELECT id, name, city_id, province_code FROM streets')
+        street_cache = {(name, city_id): sid for sid, name, city_id, prov in cur.fetchall()}
     
     cities_to_insert = set()
     
@@ -93,11 +105,11 @@ def load_addresses(conn):
         reader = csv.DictReader(f)
         for row in reader:
             city_name = row['city'].strip()
-            province_code = row['state_district'].strip() if row.get('state_district') else None
             
             if not city_name:
                 continue
             
+            province_code = get_province_from_postcode(row.get('postcode'), cap_mapping)
             if province_code and province_code not in province_map:
                 province_code = None
             
@@ -130,11 +142,11 @@ def load_addresses(conn):
         reader = csv.DictReader(f)
         for row in reader:
             city_name = row['city'].strip()
-            province_code = row['state_district'].strip() if row.get('state_district') else None
             
             if not city_name:
                 continue
             
+            province_code = get_province_from_postcode(row.get('postcode'), cap_mapping)
             if province_code and province_code not in province_map:
                 province_code = None
             
@@ -147,7 +159,7 @@ def load_addresses(conn):
             street_name = row['street'].strip()
             street_key = (street_name, city_id)
             if street_key not in street_cache:
-                streets_to_insert.add((street_name, city_id))
+                streets_to_insert.add((street_name, city_id, province_code))
     
     print(f'  New streets to insert: {len(streets_to_insert)}')
     
@@ -156,7 +168,7 @@ def load_addresses(conn):
         with conn.cursor() as cur:
             execute_values(
                 cur,
-                '''INSERT INTO streets (name, city_id) 
+                '''INSERT INTO streets (name, city_id, province_code) 
                    VALUES %s 
                    ON CONFLICT (name, city_id) DO NOTHING''',
                 list(streets_to_insert),
@@ -165,8 +177,8 @@ def load_addresses(conn):
         conn.commit()
         
         with conn.cursor() as cur:
-            cur.execute('SELECT id, name, city_id FROM streets')
-            street_cache = {(name, city_id): sid for sid, name, city_id in cur.fetchall()}
+            cur.execute('SELECT id, name, city_id, province_code FROM streets')
+            street_cache = {(name, city_id): sid for sid, name, city_id, prov in cur.fetchall()}
     
     print('Inserting addresses...')
     batch_size = 10000
@@ -177,11 +189,11 @@ def load_addresses(conn):
         reader = csv.DictReader(f)
         for row in reader:
             city_name = row['city'].strip()
-            province_code = row['state_district'].strip() if row.get('state_district') else None
             
             if not city_name:
                 continue
             
+            province_code = get_province_from_postcode(row.get('postcode'), cap_mapping)
             if province_code and province_code not in province_map:
                 province_code = None
             
