@@ -55,6 +55,20 @@ Parses the OSM file and exports ~2-4M addresses to CSV. Takes 5-15 minutes depen
 python import_db.py
 ```
 
+### 6. Deduplicate cities (optional)
+
+```bash
+python dedup_cities.py
+```
+
+Cleans up duplicate cities caused by `province_code` being NULL for entries without a valid postcode in the OSM data. Keeps the row with the most info (non-NULL `province_code`, then non-NULL `istat_code`), repoints foreign keys, and deletes the rest.
+
+Use `--dry-run` to preview without making changes:
+
+```bash
+python dedup_cities.py --dry-run
+```
+
 ## Environment Variables
 
 All configured via `.env` file (see `.env.example`):
