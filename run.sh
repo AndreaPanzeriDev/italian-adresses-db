@@ -5,7 +5,7 @@ echo "=== Italian Addresses DB - Full Pipeline ==="
 echo ""
 
 echo "Step 1: Installing dependencies..."
-pip3 install -r requirements.txt
+pip3 install -r requirements.txt --break-system-packages
 echo ""
 
 echo "Step 2: Downloading OSM data..."
@@ -18,6 +18,10 @@ echo ""
 
 echo "Step 4: Importing into PostgreSQL..."
 python3 import_db.py
+echo ""
+
+echo "Step 5: Deduplicating cities..."
+python3 dedup_cities.py
 echo ""
 
 echo "=== Pipeline Complete ==="

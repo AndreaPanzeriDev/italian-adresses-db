@@ -55,6 +55,20 @@ Parses the OSM file and exports ~2-4M addresses to CSV. Takes 5-15 minutes depen
 python import_db.py
 ```
 
+### 6. Deduplicate cities (optional)
+
+```bash
+python dedup_cities.py
+```
+
+Cleans up duplicate cities caused by `province_code` being NULL for entries without a valid postcode in the OSM data. Keeps the row with the most info (non-NULL `province_code`, then non-NULL `istat_code`), repoints foreign keys, and deletes the rest.
+
+Use `--dry-run` to preview without making changes:
+
+```bash
+python dedup_cities.py --dry-run
+```
+
 ## Environment Variables
 
 All configured via `.env` file (see `.env.example`):
@@ -69,12 +83,29 @@ All configured via `.env` file (see `.env.example`):
 
 ## Usage
 
-Query the convenient view:
+Query addresses with their ISP coverage:
 
 ```sql
-SELECT * FROM v_addresses 
-WHERE postcode = '20100' 
+SELECT * FROM v_addresses_coverage
+WHERE postcode = '20100'
 ORDER BY street, house_number;
+```
+
+Find all FTTH-covered addresses in a province:
+
+```sql
+SELECT * FROM v_addresses_coverage
+WHERE province = 'MI' AND technology_slug = 'ftth';
+```
+
+Find the best available technology per address:
+
+```sql
+SELECT DISTINCT ON (street, house_number, city)
+    street, house_number, city, provider_name, technology, max_download_mbps
+FROM v_addresses_coverage
+WHERE covered AND technology_slug IS NOT NULL
+ORDER BY street, house_number, city, max_download_mbps DESC;
 ```
 
 ## Data Coverage
@@ -90,6 +121,9 @@ ORDER BY street, house_number;
 - **cities** - Municipalities (comuni)
 - **streets** - Normalized street names
 - **addresses** - Full addresses with coordinates
+- **providers** - ISP providers (OpenFiber, FiberCop, FastWeb)
+- **connection_technologies** - Technology types (FTTH, FTTC, FWA, ADSL)
+- **address_provider_coverage** - Coverage per address per provider (speed + technology)
 
 ## License
 

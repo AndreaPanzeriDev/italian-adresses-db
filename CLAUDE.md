@@ -44,11 +44,11 @@ Flat ETL pipeline of standalone Python scripts:
 1. **`download_osm.py`** — Downloads `italy-latest.osm.pbf` from Geofabrik
 2. **`extract_addresses.py`** — Parses OSM PBF using `osmium`, extracting `addr:*` tags into `data/addresses.csv`. Fields: street, house_number, city (falls back through town/village/hamlet), postcode, lat/lon, OSM ID/type, suburb, state_district
 3. **`import_db.py`** — Loads CSV into PostgreSQL in phases: provinces → cities → streets → addresses (batches of 10K, `ON CONFLICT DO NOTHING`). Province is inferred from the first 2 digits of the CAP (postcode) via `cap_province.csv`. Postcodes are sanitized to 5-digit format.
-4. **`enrich_coverage.py`** — Async HTTP client with sliding-window rate limiter queries ISP coverage API per address. Writes provider columns (covered, technology, max_download_mbps, max_upload_mbps) for OpenFiber, FiberCop, FastWeb into `address_provider_coverage`.
+4. **`enrich_coverage.py`** — (planned, not yet implemented) Inserts ISP coverage data per address per provider into `address_provider_coverage`.
 
 ### Database Schema
 
-Tables: `provinces`, `cities`, `streets`, `addresses`, `address_provider_coverage`
+Tables: `provinces`, `cities`, `streets`, `addresses`, `providers`, `connection_technologies`, `address_provider_coverage`
 
 Views:
 - `v_addresses` — Flattened address view joining all base tables
